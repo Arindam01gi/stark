@@ -1,0 +1,107 @@
+{
+    "permissions": {
+        "allow": [
+            "Bash",
+            "Edit",
+            "MultiEdit",
+            "Write",
+            "Bash(pnpm:*)",
+            "Bash(pnpx:*)",
+            "Bash(node:*)",
+            "Bash(git:*)",
+            "Bash(eslint:*)",
+            "Bash(tsc:*)",
+            "Bash(turbo:*)",
+            "Bash(next:*)"
+        ],
+        "deny": [
+            "Bash(curl:*)",
+            "Bash(wget:*)",
+            "Bash(rm -rf:*)",
+            "Bash(npm:*)",
+            "Bash(yarn:*)",
+            "Bash(bun:*)"
+        ],
+        "defaultMode": "acceptEdits"
+    },
+    "env": {
+        "BASH_DEFAULT_TIMEOUT_MS": "60000",
+        "BASH_MAX_OUTPUT_LENGTH": "20000",
+        "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
+        "NODE_ENV": "development"
+    },
+    "includeCoAuthoredBy": true,
+    "cleanupPeriodDays": 30,
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "jq -r '\"\\(.tool_input.command) - \\(.tool_input.description // \"No description\")\"' >> ~/.claude/bash-command-log.txt"
+                    }
+                ]
+            },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "if echo \"$TOOL_INPUT\" | grep -q 'console\\.log'; then echo '⚠️  WARNING: console.log detected in production code. Use proper error handling instead.' >&2; fi"
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "FILE=$(echo \"$TOOL_RESULT\" | jq -r '.filePath // empty'); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx|js|jsx|mts|mjs)$'; then pnpx eslint --fix \"$FILE\" 2>/dev/null || true; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": "Edit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "FILE=$(echo \"$TOOL_RESULT\" | jq -r '.filePath // empty'); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx|js|jsx|mts|mjs)$'; then pnpx eslint --fix \"$FILE\" 2>/dev/null || true; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": "MultiEdit",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "FILE=$(echo \"$TOOL_RESULT\" | jq -r '.filePath // empty'); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx|js|jsx|mts|mjs)$'; then pnpx eslint --fix \"$FILE\" 2>/dev/null || true; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": "Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "FILE=$(echo \"$TOOL_RESULT\" | jq -r '.filePath // empty'); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.tsx?$'; then pnpx tsc --noEmit --pretty 2>&1 | head -20 || true; fi"
+                    }
+                ]
+            }
+        ],
+        "Notification": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "echo \"Agent notification: $(date)\" >> ~/.claude/notifications.log"
+                    }
+                ]
+            }
+        ],
+        "Stop": []
+    }
+}
